@@ -1,0 +1,4 @@
+C:\Dropbox\gitM2R\mremoteng.m2r\mremoteng.m2r\bin\Debug\mremoteng.m2r.exe
+C:\Dropbox\gitM2R\mremoteng.m2r\mremoteng.m2r\bin\Debug\mremoteng.m2r.pdb
+C:\Dropbox\gitM2R\mremoteng.m2r\mremoteng.m2r\obj\x86\Debug\mremoteng.m2r.exe
+C:\Dropbox\gitM2R\mremoteng.m2r\mremoteng.m2r\obj\x86\Debug\mremoteng.m2r.pdb
