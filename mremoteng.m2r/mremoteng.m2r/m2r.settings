@@ -1,9 +1,0 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
-<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="mremoteng.m2r" GeneratedClassName="m2r">
-  <Profiles />
-  <Settings>
-    <Setting Name="source_path" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-  </Settings>
-</SettingsFile>

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using log4net;
 using log4net.Config;
+using System.Configuration;
+using System.Xml;
 
 namespace mremoteng.m2r
 {
@@ -15,26 +17,19 @@ namespace mremoteng.m2r
         {
             log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
             //This method initializes the log4net system to use a simple Console appender
-            BasicConfigurator.Configure();
+            //BasicConfigurator.Configure();
 
-            log.Debug("Starting...");
+            //load config file
+            XmlDocument configs = new XmlDocument();
+            configs.Load("m2r.xml");
 
-            //online resource for testing only
-            mremote = new mremote(Properties.Resources.onlinesource);
+            //config data
+            string msmfile = configs.SelectSingleNode("/mremote/msmfile").InnerText;
+            string msmnode = configs.SelectSingleNode("/mremote/msmnode").InnerText;
             
-
-
-            //read m2r settings file - get xml path
-            //backup the original xml source 
-            //copy the new source
-
-            //open the new xml addition
-            //open the full source xml
-            //replace the ONLINE section
-
-
-
-
+            //open mremote launcher and connections file configurator
+            mremote = new mremote(msmfile, msmnode);
+            
 
         }
     }
