@@ -1,5 +1,0 @@
-C:\Users\menchacr\Desktop\files\Test Scripts\visionapp_msm\visionapp_msm\visionapp_msm\bin\Debug\visionapp_msm.exe
-C:\Users\menchacr\Desktop\files\Test Scripts\visionapp_msm\visionapp_msm\visionapp_msm\bin\Debug\visionapp_msm.pdb
-C:\Users\menchacr\Desktop\files\Test Scripts\visionapp_msm\visionapp_msm\visionapp_msm\obj\Debug\visionapp_msm.csprojResolveAssemblyReference.cache
-C:\Users\menchacr\Desktop\files\Test Scripts\visionapp_msm\visionapp_msm\visionapp_msm\obj\Debug\visionapp_msm.exe
-C:\Users\menchacr\Desktop\files\Test Scripts\visionapp_msm\visionapp_msm\visionapp_msm\obj\Debug\visionapp_msm.pdb
