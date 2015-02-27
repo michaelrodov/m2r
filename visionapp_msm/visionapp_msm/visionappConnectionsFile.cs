@@ -15,6 +15,15 @@ namespace visionapp_msm
         private int currentConnectionFolderIdCount;
         private int currentCredFolderIdCount;
         private int currentAppFolderIdCount;
+
+        //"Workaround variables" to speed up the adding process!
+        // this system only works if the input is sorted!
+        private int currentProductFolderId;
+        private String currentProductFolderName;
+        private int currentDatacenterFolderId;
+        private String currentDatacenterFolderName;
+        private int currentFarmFolderId;
+        private String currentFarmFolderName;
         
         private XElement credentials;
         private XElement connections;
@@ -33,6 +42,13 @@ namespace visionapp_msm
             currentConnectionFolderIdCount = 0;
             currentCredFolderIdCount = 0;
             currentAppFolderIdCount = 0;
+
+            currentProductFolderId = 0;
+            currentProductFolderName = "";
+            currentDatacenterFolderId = 0;
+            currentDatacenterFolderName = "";
+            currentFarmFolderId = 0;
+            currentFarmFolderName = "";
 
             credentials = new XElement("Credentials");
             connections = new XElement("Connections");
@@ -60,15 +76,48 @@ namespace visionapp_msm
             String datacenter, 
             String farm)
         {
-            //First add the product folder
-            String folderId1 = addProduct(product);
-            //then the datacenter folder
-            String folderId2 = addDatacenter(folderId1, datacenter);
-            //then the farm folder
-            String folderId3 = addFarm(folderId2, farm);
+            //We can have the same farm in different datacenters: (empty farm)
+            // so we need a way to track when we're in a different datacenter
+            // but in the same farm!
+            bool newDatacenterFlag = false;
 
-            //then finally the server!
-            addConnection(serverName, serverIp, serverRole, serverOperatingSystem, folderId3);
+            //First add the product folder
+            if(product!=currentProductFolderName)
+            {
+                addFolder(product);
+                addCredPlace(owner, (currentConnectionFolderIdCount - 1).ToString(), "0", "false");
+                addIndexTableItem((currentConnectionFolderIdCount - 1).ToString(), "Folder", "0");
+                currentProductFolderId = currentConnectionFolderIdCount - 1;
+                currentProductFolderName = product;
+            }
+            //String folderId1 = addProduct(product);
+
+            //...then the datacenter folder
+            if(datacenter!=currentDatacenterFolderName)
+            {
+                addFolder(datacenter);
+                addCredPlace(owner, (currentConnectionFolderIdCount - 1).ToString(), "0", "true");
+                addIndexTableItem((currentConnectionFolderIdCount - 1).ToString(), "Folder", currentProductFolderId.ToString());
+                currentDatacenterFolderId = currentConnectionFolderIdCount - 1;
+                currentDatacenterFolderName = datacenter;
+
+                newDatacenterFlag = true;
+            }
+            //String folderId2 = addDatacenter(folderId1, datacenter);
+
+            //...then the farm folder
+            if (farm != currentFarmFolderName || newDatacenterFlag)
+            {
+                addFolder(farm);
+                addCredPlace(owner, (currentConnectionFolderIdCount - 1).ToString(), "0", "true");
+                addIndexTableItem((currentConnectionFolderIdCount - 1).ToString(), "Folder", currentDatacenterFolderId.ToString());
+                currentFarmFolderId = currentConnectionFolderIdCount - 1;
+                currentFarmFolderName = farm;
+            }
+            //String folderId3 = addFarm(folderId2, farm);
+
+            //... and then finally the server!
+            addConnection(serverName, serverIp, serverRole, serverOperatingSystem, currentFarmFolderId.ToString());
 
         }
 
@@ -86,13 +135,21 @@ namespace visionapp_msm
             connectionsFile.Add(appFolders);
             connectionsFile.Add(externalApps);
             connectionsFile.Add(connStates);
-            connectionsFile.Add(new XElement("TreeViewSettings", "PD94bWwgdmVyc2lvbj0iMS4wIj8+DQo8QXJyYXlPZlRyZWVTdGF0ZUl0ZW0geG1sbnM6eHNpPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYS1pbnN0YW5jZSIgeG1sbnM6eHNkPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYSI+DQogIDxUcmVlU3RhdGVJdGVtPg0KICAgIDxEYXRhSXRlbUlkPjA8L0RhdGFJdGVtSWQ+DQogICAgPE9iamVjdFR5cGU+dlJEX0Nvbm5lY3Rpb25zX1Jvb3Q8L09iamVjdFR5cGU+DQogICAgPENhdGVnb3J5PmZhbHNlPC9DYXRlZ29yeT4NCiAgICA8U2VsZWN0ZWQ+ZmFsc2U8L1NlbGVjdGVkPg0KICA8L1RyZWVTdGF0ZUl0ZW0+DQogIDxUcmVlU3RhdGVJdGVtPg0KICAgIDxEYXRhSXRlbUlkPjE8L0RhdGFJdGVtSWQ+DQogICAgPE9iamVjdFR5cGU+dlJEX0ZvbGRlcjwvT2JqZWN0VHlwZT4NCiAgICA8Q2F0ZWdvcnk+ZmFsc2U8L0NhdGVnb3J5Pg0KICAgIDxTZWxlY3RlZD5mYWxzZTwvU2VsZWN0ZWQ+DQogIDwvVHJlZVN0YXRlSXRlbT4NCiAgPFRyZWVTdGF0ZUl0ZW0+DQogICAgPERhdGFJdGVtSWQ+MjwvRGF0YUl0ZW1JZD4NCiAgICA8T2JqZWN0VHlwZT52UkRfRm9sZGVyPC9PYmplY3RUeXBlPg0KICAgIDxDYXRlZ29yeT5mYWxzZTwvQ2F0ZWdvcnk+DQogICAgPFNlbGVjdGVkPmZhbHNlPC9TZWxlY3RlZD4NCiAgPC9UcmVlU3RhdGVJdGVtPg0KICA8VHJlZVN0YXRlSXRlbT4NCiAgICA8RGF0YUl0ZW1JZD40PC9EYXRhSXRlbUlkPg0KICAgIDxPYmplY3RUeXBlPnZSRF9Gb2xkZXI8L09iamVjdFR5cGU+DQogICAgPENhdGVnb3J5PmZhbHNlPC9DYXRlZ29yeT4NCiAgICA8U2VsZWN0ZWQ+ZmFsc2U8L1NlbGVjdGVkPg0KICA8L1RyZWVTdGF0ZUl0ZW0+DQogIDxUcmVlU3RhdGVJdGVtPg0KICAgIDxEYXRhSXRlbUlkPjU8L0RhdGFJdGVtSWQ+DQogICAgPE9iamVjdFR5cGU+dlJEX0ZvbGRlcjwvT2JqZWN0VHlwZT4NCiAgICA8Q2F0ZWdvcnk+ZmFsc2U8L0NhdGVnb3J5Pg0KICAgIDxTZWxlY3RlZD5mYWxzZTwvU2VsZWN0ZWQ+DQogIDwvVHJlZVN0YXRlSXRlbT4NCiAgPFRyZWVTdGF0ZUl0ZW0+DQogICAgPERhdGFJdGVtSWQ+MzwvRGF0YUl0ZW1JZD4NCiAgICA8T2JqZWN0VHlwZT52UkRfRm9sZGVyPC9PYmplY3RUeXBlPg0KICAgIDxDYXRlZ29yeT5mYWxzZTwvQ2F0ZWdvcnk+DQogICAgPFNlbGVjdGVkPmZhbHNlPC9TZWxlY3RlZD4NCiAgPC9UcmVlU3RhdGVJdGVtPg0KICA8VHJlZVN0YXRlSXRlbT4NCiAgICA8RGF0YUl0ZW1JZD44PC9EYXRhSXRlbUlkPg0KICAgIDxPYmplY3RUeXBlPnZSRF9Db25uZWN0aW9uPC9PYmplY3RUeXBlPg0KICAgIDxDYXRlZ29yeT5mYWxzZTwvQ2F0ZWdvcnk+DQogICAgPFNlbGVjdGVkPnRydWU8L1NlbGVjdGVkPg0KICA8L1RyZWVTdGF0ZUl0ZW0+DQo8L0FycmF5T2ZUcmVlU3RhdGVJdGVtPg=="));
+            connectionsFile.Add(new XElement("TreeViewSettings", "PD94bWwgdmVyc2lvbj0iMS4wIj8+DQo8QXJyYXlPZlRyZWVTdGF0ZUl0ZW0geG1sbnM6eHNpPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYS1pbnN0YW5jZSIgeG1sbnM6eHNkPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYSI+DQogIDxUcmVlU3RhdGVJdGVtPg0KICAgIDxEYXRhSXRlbUlkPjA8L0RhdGFJdGVtSWQ+DQogICAgPE9iamVjdFR5cGU+dlJEX0Nvbm5lY3Rpb25zX1Jvb3Q8L09iamVjdFR5cGU+DQogICAgPENhdGVnb3J5PmZhbHNlPC9DYXRlZ29yeT4NCiAgICA8U2VsZWN0ZWQ+ZmFsc2U8L1NlbGVjdGVkPg0KICA8L1RyZWVTdGF0ZUl0ZW0+DQogIDxUcmVlU3RhdGVJdGVtPg0KICAgIDxEYXRhSXRlbUlkPjYzNDc8L0RhdGFJdGVtSWQ+DQogICAgPE9iamVjdFR5cGU+dlJEX0ZvbGRlcjwvT2JqZWN0VHlwZT4NCiAgICA8Q2F0ZWdvcnk+ZmFsc2U8L0NhdGVnb3J5Pg0KICAgIDxTZWxlY3RlZD50cnVlPC9TZWxlY3RlZD4NCiAgPC9UcmVlU3RhdGVJdGVtPg0KPC9BcnJheU9mVHJlZVN0YXRlSXRlbT4="));
 
 
             return connectionsFile;
         }
 
 /*******************************************************************************************/
+
+        /* These functions were the "old" way to add product, datacenter and farm folders.
+         * These were really slow since each function would loop through ALL folders to
+         * verify if they existed or not.
+         * Now we assume the input "servers" list is sorted (by product, datacenter, farm, and server
+         * name... in that order). This way we don't have to search for existing folders and it
+         * speeds up the performance by a lot! :)
+         * 
         private String addProduct(String product)
         {
             if(!doesProductExist(product))
@@ -184,6 +241,8 @@ namespace visionapp_msm
 
             return "";
         }
+                
+         */
 
         private void addConnection(String serverName,
             String serverIp,
@@ -193,10 +252,10 @@ namespace visionapp_msm
         {
             if(serverOperatingSystem.Contains("Windows"))
             {
-                //Windows!
+                //Windows! (RDP)
                 XElement newConnection = new XElement("Connection");
                 newConnection.Add(new XAttribute("Id", currentConnectionFolderIdCount));
-                newConnection.Add(new XElement("LastUpdate", "X"));
+                newConnection.Add(new XElement("LastUpdate", "-8587767832102012914"));
                 newConnection.Add(new XElement("LastUpdateBy", "TOOL"));
                 newConnection.Add(new XElement("ConnectionName", serverName));
                 newConnection.Add(new XElement("ServerName", serverIp));
@@ -287,7 +346,7 @@ namespace visionapp_msm
             }
             else
             {
-                //We'll assume Linux here
+                //We'll assume Linux here (SSH)
                 XElement newConnection = new XElement("Connection");
                 newConnection.Add(new XAttribute("Id", currentConnectionFolderIdCount));
                 newConnection.Add(new XElement("LastUpdate", "-8587767832102012914"));
@@ -429,8 +488,8 @@ namespace visionapp_msm
 
             XElement newItem = new XElement("Item");
             newItem.Add(new XAttribute("Id", id));
-            newItem.Add(new XAttribute("Type", "-8587767833400112711"));
-            newItem.Add(new XAttribute("ParentItemId", "0"));
+            newItem.Add(new XAttribute("Type", type));
+            newItem.Add(new XAttribute("ParentItemId", parentItemId));
             newItem.Add(new XAttribute("OrderNum", orderNum));
             indexTable.Add(newItem);
         }

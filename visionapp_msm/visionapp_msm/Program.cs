@@ -14,10 +14,7 @@ namespace visionapp_msm
 {
     class Program
     {
-        private static void Sort(ref String[][] array)
-        {
-            
-        }
+
 
         static void Main(string[] args)
         {
@@ -48,11 +45,68 @@ namespace visionapp_msm
             getDatacenters(ref datacenters);
             getFarms(ref farms);
 
-            //Sort servers array
+            
 
+            Console.WriteLine("Back-filling product, datacenter, and farm names...");
+            backFillValuesToServersArray(ref servers, ref products, ref datacenters, ref farms);
+
+
+            //Sort servers array (important for quick adding to the connections file!)
+            // One other thing to point out is that the sort should be done
+            // "just BEFORE" adding the values to the visionapp connections file
+            // and AFTER any changes to the servers array.
+            Console.WriteLine("\rSorting servers array (quickSort)...");
+            quickSort(ref servers, 0, servers[0].Length - 1);
+
+            //Add to the visionapp connection file...
             Console.WriteLine("Adding to visionapp connections file...");
-
             visionappConnectionsFile vConnFile = new visionappConnectionsFile(owner);
+
+            for (int i = 0; i < servers[0].Length; i++ )
+            {
+                String serverProduct = servers[0][i];
+                String serverName = servers[1][i];
+                String serverIp = servers[2][i];
+                String serverDatacenter = servers[3][i];
+                String serverFarm = servers[4][i];
+                String serverRole = servers[5][i];
+                String serverOperatingSystem = servers[6][i];
+
+
+                //IMPORTANT! Expects the servers to be in sorted order!
+                vConnFile.addServer(serverName,
+                   serverIp,
+                   serverRole,
+                   serverOperatingSystem,
+                   serverProduct,
+                   serverDatacenter,
+                   serverFarm);
+
+                Console.Write("\r" + i + "/" + servers[0].Length + " (" + ((double)((i * 100) / servers[0].Length)).ToString("#.####") + "%)");
+            }
+
+
+                Console.WriteLine("\rExporting to settings.xml file...");
+
+            //DEBUG!
+            String connectionsFilePath = "settings.xml";
+
+            //Write to connectionsFilePath
+            XElement xml = vConnFile.exportConnectionsFile();
+            System.IO.File.WriteAllText(@connectionsFilePath, xml.ToString());
+
+
+            Console.WriteLine("Finished!");
+
+        }
+
+        //Translates the product, datacenter, and farm values into what we want the user to
+        // see... then backfills these "display" versions into the servers array.
+        static void backFillValuesToServersArray(ref String[][] servers,
+            ref String[][] products,
+            ref String[][] datacenters,
+            ref String[][] farms)
+        {
             for (int i = 0; i < servers[0].Length; i++)
             {
                 String serverProduct = servers[0][i];
@@ -67,18 +121,20 @@ namespace visionapp_msm
                 String theDatacenter = "";
                 String theFarm = "";
 
-                for(int j=0; j<products[0].Length; j++)
+                for (int j = 0; j < products[0].Length; j++)
                 {
                     String productDisplayName = products[0][j];
                     String productFullName = products[1][j];
                     String productId = products[2][j];
                     String productName = products[3][j];
-                    if(serverProduct==productDisplayName || serverProduct==productName)
+                    if (serverProduct == productDisplayName || serverProduct == productName)
                     {
-                        theProduct = productDisplayName + " : " + productFullName.Replace("&","");
+                        theProduct = productDisplayName + " : " + productFullName.Replace("&", "");
                         break;
                     }
                 }
+                if (theProduct == "")
+                    theProduct = serverProduct;
 
                 for (int j = 0; j < datacenters[0].Length; j++)
                 {
@@ -90,42 +146,34 @@ namespace visionapp_msm
                         break;
                     }
                 }
+                if (theDatacenter == "")
+                    theDatacenter = "(empty datacenter)";
 
-                for(int j=0; j<farms[0].Length; j++)
+                for (int j = 0; j < farms[0].Length; j++)
                 {
                     String farmName = farms[0][j];
                     String farmDescription = farms[1][j];
-                    if(serverFarm==farmName)
+                    if (serverFarm == farmName)
                     {
                         theFarm = farmName.Replace("&", "") + " : " + farmDescription.Replace("&", "");
                         break;
                     }
                 }
+                if (theFarm == "")
+                    theFarm = "(empty farm)";
 
-                vConnFile.addServer(serverName, 
-                    serverIp, 
-                    serverRole, 
-                    serverOperatingSystem, 
-                    theProduct, 
-                    theDatacenter, 
-                    theFarm);
 
-                Console.Write("\r" + i + "/" + servers[0].Length + " (" + ((double)((i*100)/servers[0].Length)).ToString("#.####") + "%)");
+                //Push values back into the servers array...
+                servers[0][i] = theProduct;
+                servers[3][i] = theDatacenter;
+                servers[4][i] = theFarm;
+
+                Console.Write("\r" + i + "/" + servers[0].Length + " (" + ((double)((i * 100) / servers[0].Length)).ToString("#.####") + "%)");
 
             }
-
-            //DEBUG
-            String connectionsFilePath = "settings.xml";
-
-            //Write to connectionsFilePath
-            XElement xml = vConnFile.exportConnectionsFile();
-            System.IO.File.WriteAllText(@connectionsFilePath, xml.Value);
-
-
-                Console.WriteLine("Finished!");
-
         }
 
+        /******************* Functions to grab info from MSM (REST) *********************************/
         static void getServers(ref String[][] array)
         {
             String URL = "https://msmadmin.saas.hp.com/Rest2/Server/All/";
@@ -147,6 +195,9 @@ namespace visionapp_msm
                 xml.LoadXml(request);
                 XmlNodeList servers = xml.DocumentElement.SelectNodes("/Response/Servers/Server");
 
+                //DEBUG! PPM only!
+                //XmlNodeList servers = xml.DocumentElement.SelectNodes("/Response/Servers/Server[productID='4']");
+
                 int i = 0;
                 array[0] = new String[servers.Count];
                 array[1] = new String[servers.Count];
@@ -167,29 +218,60 @@ namespace visionapp_msm
                     String serverRole;
                     String serverOperatingSystem;
 
+
                     try
                     {
                         serverProduct = server.SelectSingleNode("productName").InnerText;
+                        if (serverProduct == "")
+                            serverProduct = "EMPTY";
                         serverName = server.SelectSingleNode("name").InnerText;
                          serverIp = server.SelectSingleNode("managementIP").InnerText;
                         if (serverIp == "")
                             serverIp = serverName;
                         serverDatacenter = server.SelectSingleNode("dataCenterId").InnerText;
+                        if (serverDatacenter == "")
+                            serverDatacenter = "EMPTY";
                         serverFarm = server.SelectSingleNode("farmName").InnerText;
+                        if (serverFarm == "")
+                            serverFarm = "EMPTY";
                         serverRole = server.SelectSingleNode("serverRole").InnerText;
-                        serverOperatingSystem = server.SelectSingleNode("operatingSystem").InnerText;
+                        try
+                        {
+                            //Apparently, it's possible to NOT have an "operatingSystem" attribute...
+                            // so we have to check for this...
+                            serverOperatingSystem = server.SelectSingleNode("operatingSystem").InnerText;
+                        }
+                        catch
+                        {
+                            serverOperatingSystem = "";
+                        }
                     }
                     catch
                     {
                         serverProduct = server.SelectSingleNode("serverRole").InnerText;
+                        if (serverProduct == "")
+                            serverProduct = "EMPTY";
                         serverName = server.SelectSingleNode("name").InnerText;
                         serverIp = server.SelectSingleNode("managementIP").InnerText;
                         if (serverIp == "")
                             serverIp = serverName;
                         serverDatacenter = server.SelectSingleNode("dataCenterId").InnerText;
+                        if (serverDatacenter == "")
+                            serverDatacenter = "EMPTY";
                         serverFarm = server.SelectSingleNode("farmName").InnerText;
+                        if (serverFarm == "")
+                            serverFarm = "EMPTY";
                         serverRole = server.SelectSingleNode("serverRole").InnerText;
-                        serverOperatingSystem = server.SelectSingleNode("operatingSystem").InnerText;
+                        try
+                        {
+                            //Apparently, it's possible to NOT have an "operatingSystem" attribute...
+                            // so we have to check for this...
+                            serverOperatingSystem = server.SelectSingleNode("operatingSystem").InnerText;
+                        }
+                        catch
+                        {
+                            serverOperatingSystem = "";
+                        }
                     }
 
                     array[0][i] = serverProduct;
@@ -360,7 +442,73 @@ namespace visionapp_msm
             }
         }
 
+        /******************** Sort functions for the "servers" array ************************************/
+        // Quicksort: http://en.wikipedia.org/wiki/Quicksort
+        private static void quickSort(ref String[][] array, int lo, int hi)
+        {
+            if (lo < hi)
+            {
+                int p = partition(ref array, lo, hi);
+                quickSort(ref array, lo, p - 1);
+                quickSort(ref array, p + 1, hi);
+            }
+        }
 
+        private static int partition(ref String[][] array, int lo, int hi)
+        {
+            int pivotIndex = (hi - lo) / 2 + lo;
+
+            String[] pivotValue = new String[7];
+            for (int i = 0; i < 7; i++)
+                pivotValue[i] = array[i][pivotIndex];
+
+            swap(ref array, pivotIndex, hi);
+
+            int storeIndex = lo;
+
+            for (int i = lo; i <= hi - 1; i++)
+            {
+                String string1 = "";
+                String string2 = "";
+
+                // Let's compare (in order):
+                //      product(0), datacenter(3), farm(4), serverName(1)
+                string1 += array[0][i];
+                string1 += array[3][i];
+                string1 += array[4][i];
+                string1 += array[1][i];
+                string2 += pivotValue[0];
+                string2 += pivotValue[3];
+                string2 += pivotValue[4];
+                string2 += pivotValue[1];
+
+                if (String.Compare(string1, string2) < 0)
+                {
+                    swap(ref array, i, storeIndex);
+                    storeIndex++;
+                }
+            }
+            swap(ref array, storeIndex, hi);
+
+            return storeIndex;
+        }
+
+        private static void swap(ref String[][] array, int index1, int index2)
+        {
+            String[] temp = new String[7];
+
+            // temp = A[index1]
+            for (int i = 0; i < 7; i++)
+                temp[i] = array[i][index1];
+
+            // A[index1] = A[index2]
+            for (int i = 0; i < 7; i++)
+                array[i][index1] = array[i][index2];
+
+            // A[index2] = temp
+            for (int i = 0; i < 7; i++)
+                array[i][index2] = temp[i];
+        }
 
 
     }
